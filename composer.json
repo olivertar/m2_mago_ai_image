@@ -3,13 +3,33 @@
     "description": "Mago Assistant add-on: AI product images from a gallery image and a prompt, with pluggable providers (Google Gemini, OpenAI).",
     "type": "magento2-module",
     "license": "MIT",
+    "support": {
+        "issues": "https://github.com/olivertar/m2_mago_ai_image/issues",
+        "security": "https://github.com/olivertar/m2_mago_ai_image/security/advisories/new",
+        "source": "https://github.com/olivertar/m2_mago_ai_image"
+    },
     "require": {
         "php": "~8.2.0||~8.3.0||~8.4.0||~8.5.0",
         "ext-gd": "*",
-        "magento/module-media-storage": "*",
+        "magento/framework": "^103.0.8 || ^104.0",
+        "magento/module-authorization": "^100.4.8 || ^101.0",
+        "magento/module-backend": "^102.0.8 || ^103.0",
+        "magento/module-catalog": "^104.0.8 || ^105.0",
+        "magento/module-config": "^101.2.8 || ^102.0",
+        "magento/module-cron": "^100.4.8 || ^101.0",
+        "magento/module-store": "^101.1.8 || ^102.0",
+        "magento/module-user": "^101.2.8 || ^102.0",
         "mage-os/module-ai-base": "^1.1",
         "mago-assistant/magento2-mago": "^1.1",
         "symfony/ai-gemini-platform": "^0.15"
+    },
+    "require-dev": {
+        "bitexpert/phpstan-magento": "^0.44",
+        "magento/magento-coding-standard": "^41",
+        "phpstan/extension-installer": "^1.4",
+        "phpstan/phpstan": "^2.3",
+        "phpstan/phpstan-phpunit": "^2.1",
+        "phpunit/phpunit": "^10.5 || ^11.5 || ^12.5"
     },
     "autoload": {
         "files": [
@@ -17,6 +37,20 @@
         ],
         "psr-4": {
             "Orangecat\\MagoAiImage\\": ""
+        }
+    },
+    "repositories": [
+        {
+            "type": "composer",
+            "url": "https://mirror.mage-os.org/"
+        }
+    ],
+    "config": {
+        "allow-plugins": {
+            "magento/composer-dependency-version-audit-plugin": false,
+            "magento/magento-composer-installer": false,
+            "phpstan/extension-installer": true,
+            "dealerdirect/phpcodesniffer-composer-installer": true
         }
     }
 }

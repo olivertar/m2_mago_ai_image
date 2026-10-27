@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Orangecat\MagoAiImage\Test\Unit\Model\Provider;
 
+use Orangecat\MagoAiImage\Api\Data\ImageBinaryInterface;
 use Orangecat\MagoAiImage\Api\Data\ImageBinaryInterfaceFactory;
 use Orangecat\MagoAiImage\Api\Data\ImageResultInterfaceFactory;
 use Orangecat\MagoAiImage\Api\Data\ProviderCapabilitiesInterfaceFactory;
@@ -138,7 +139,7 @@ class OpenAiTest extends TestCase
         );
 
         $this->assertSame(['IMG1', 'IMG2'], array_map(
-            static fn (ImageBinary $image): string => $image->getContent(),
+            static fn (ImageBinaryInterface $image): string => $image->getContent(),
             $result->getImages()
         ));
         $this->assertSame('gpt-image-2.5-sunburst', $result->getModel());

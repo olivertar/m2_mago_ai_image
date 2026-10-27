@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<ruleset name="Orangecat_MagoAiImage">
+    <description>Magento coding standard for this module</description>
+    <file>.</file>
+    <exclude-pattern>vendor/*</exclude-pattern>
+    <arg name="extensions" value="php,phtml"/>
+    <arg value="sp"/>
+    <rule ref="Magento2"/>
+    <!--
+        The dummy provider draws placeholder images with GD in developer mode only; it never runs
+        in production, and GD is what makes it work without an external service.
+    -->
+    <rule ref="Magento2.Functions.DiscouragedFunction">
+        <exclude-pattern>Model/Provider/Dummy.php</exclude-pattern>
+    </rule>
+</ruleset>

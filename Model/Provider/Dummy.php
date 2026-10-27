@@ -146,8 +146,8 @@ class Dummy implements ImageProviderInterface
         [$w, $h] = array_map('intval', explode(':', $aspectRatio) + [1, 1]);
         $w = max(1, $w);
         $h = max(1, $h);
-        $width = $w >= $h ? self::SIZE : (int) round(self::SIZE * $w / $h);
-        $height = $h >= $w ? self::SIZE : (int) round(self::SIZE * $h / $w);
+        $width = max(1, $w >= $h ? self::SIZE : (int) round(self::SIZE * $w / $h));
+        $height = max(1, $h >= $w ? self::SIZE : (int) round(self::SIZE * $h / $w));
         $canvas = imagecreatetruecolor($width, $height);
         if (!$canvas instanceof GdImage) {
             throw new ProviderException(__('Could not create the image.'));

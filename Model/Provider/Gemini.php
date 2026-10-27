@@ -26,6 +26,7 @@ use Symfony\AI\Platform\Message\Content\Image;
 use Symfony\AI\Platform\Message\Content\Text;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
+use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\BinaryResult;
 use Symfony\AI\Platform\Result\ChoiceResult;
 use Symfony\AI\Platform\Result\DeferredResult;
@@ -153,18 +154,24 @@ class Gemini implements ImageProviderInterface
         $usage = ['images' => 0, 'calls' => 0, 'prompt_tokens' => 0, 'output_tokens' => 0, 'total_tokens' => 0];
         for ($i = 0, $count = max(1, $request->getCount()); $i < $count; $i++) {
             try {
-                $result = $platform->invoke($model, $messages, $options);
-            } catch (PlatformExceptionInterface $e) {
-                throw new ProviderException(__('Google Gemini error: %1', $e->getMessage()), $e);
+                [$callImages, $callText, $metadata] = $this->invokeOnce(
+                    $platform,
+                    $model,
+                    $messages,
+                    $options,
+                    $timeout
+                );
+            } catch (ProviderException $e) {
+                if ($images === []) {
+                    throw $e;
+                }
+                break;
             }
-            $response = $this->responseReader->read($result, self::LABEL, $timeout);
             $usage['calls']++;
-            [$callImages, $callText] = $this->parseResponse($result, $response['status'], $response['body']);
             array_push($images, ...$callImages);
             if ($callText !== '') {
                 $texts[] = $callText;
             }
-            $metadata = $response['body']['usageMetadata'] ?? [];
             $usage['prompt_tokens'] += (int) ($metadata['promptTokenCount'] ?? 0);
             $usage['output_tokens'] += (int) ($metadata['candidatesTokenCount'] ?? 0);
             $usage['total_tokens'] += (int) ($metadata['totalTokenCount'] ?? 0);
@@ -177,6 +184,40 @@ class Gemini implements ImageProviderInterface
             'revisedPrompt' => $texts === [] ? null : implode("\n", array_unique($texts)),
             'usage' => $usage,
         ]);
+    }
+
+    /**
+     * One generateContent call: its images, its text and its usage metadata.
+     *
+     * Gemini returns one image per call, so a request for several images makes several calls. A
+     * failing later call must not throw away the images earlier calls already returned (and were
+     * billed for); generate() stops there and returns what it has.
+     *
+     * @param PlatformInterface $platform
+     * @param GeminiModel $model
+     * @param MessageBag $messages
+     * @param array<string,mixed> $options
+     * @param int $timeout
+     * @return array{0: ImageBinaryInterface[], 1: string, 2: array<string, mixed>}
+     * @throws ProviderException
+     */
+    private function invokeOnce(
+        PlatformInterface $platform,
+        GeminiModel $model,
+        MessageBag $messages,
+        array $options,
+        int $timeout
+    ): array {
+        try {
+            $result = $platform->invoke($model, $messages, $options);
+        } catch (PlatformExceptionInterface $e) {
+            throw new ProviderException(__('Google Gemini error: %1', $e->getMessage()), $e);
+        }
+        $response = $this->responseReader->read($result, self::LABEL, $timeout);
+        [$images, $text] = $this->parseResponse($result, $response['status'], $response['body']);
+        $metadata = $response['body']['usageMetadata'] ?? [];
+
+        return [$images, $text, is_array($metadata) ? $metadata : []];
     }
 
     /**

@@ -4,11 +4,14 @@ declare(strict_types=1);
 
 namespace Orangecat\MagoAiImage\Model;
 
+use Magento\Catalog\Api\Data\ProductInterface;
 use Magento\Catalog\Api\ProductRepositoryInterface;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\Exception\NoSuchEntityException;
 use Orangecat\MagoAiImage\Api\Data\GenerationInterface;
+use Orangecat\MagoAiImage\Api\Data\ImageBinaryInterface;
 use Orangecat\MagoAiImage\Api\Data\ImageRequestInterfaceFactory;
+use Orangecat\MagoAiImage\Api\Data\ImageResultInterface;
 use Orangecat\MagoAiImage\Api\GenerationRepositoryInterface;
 use Orangecat\MagoAiImage\Api\ImageGeneratorInterface;
 use Orangecat\MagoAiImage\Api\ImageProviderInterface;
@@ -149,30 +152,77 @@ class ImageGenerator implements ImageGeneratorInterface
         }
 
         $generations = [];
+        $firstError = null;
         foreach ($images as $image) {
-            $checked = $this->imageInspector->inspect($image->getContent());
-            $file = $this->previewStorage->save($checked);
-
-            $generation = $this->generationFactory->create();
-            $generation->setProductId((int) $product->getId())
-                ->setSourceFile($sourceFile)
-                ->setProvider($provider->getCode())
-                ->setModel($result->getModel())
-                ->setPrompt($prompt)
-                ->setRevisedPrompt($result->getRevisedPrompt())
-                ->setFile($file)
-                ->setStatus(GenerationInterface::STATUS_PREVIEW)
-                ->setAdminUserId($adminUserId)
-                ->setUsage($result->getUsage());
             try {
-                $generations[] = $this->generationRepository->save($generation);
+                $generations[] = $this->storePreview(
+                    $image,
+                    $product,
+                    $sourceFile,
+                    $provider,
+                    $result,
+                    $prompt,
+                    $adminUserId
+                );
             } catch (LocalizedException $e) {
-                $this->previewStorage->delete($file);
-                throw $e;
+                $firstError ??= $e;
+                $this->logger->warning('Orangecat_MagoAiImage: could not store a generated image', [
+                    'provider' => $provider->getCode(),
+                    'sku' => $sku,
+                    'error' => $e->getMessage(),
+                ]);
             }
+        }
+        if ($generations === [] && $firstError !== null) {
+            throw $firstError;
         }
 
         return $generations;
+    }
+
+    /**
+     * Inspect, write and record one generated image as a preview.
+     *
+     * Every image was billed by the provider, so one broken image must not cost the others: the
+     * caller keeps the previews that were stored and only fails when none could be.
+     *
+     * @param ImageBinaryInterface $image
+     * @param ProductInterface $product
+     * @param string|null $sourceFile
+     * @param ImageProviderInterface $provider
+     * @param ImageResultInterface $result
+     * @param string $prompt
+     * @param int|null $adminUserId
+     * @return GenerationInterface
+     * @throws LocalizedException
+     */
+    private function storePreview(
+        ImageBinaryInterface $image,
+        ProductInterface $product,
+        ?string $sourceFile,
+        ImageProviderInterface $provider,
+        ImageResultInterface $result,
+        string $prompt,
+        ?int $adminUserId
+    ): GenerationInterface {
+        $file = $this->previewStorage->save($this->imageInspector->inspect($image->getContent()));
+        $generation = $this->generationFactory->create();
+        $generation->setProductId((int) $product->getId())
+            ->setSourceFile($sourceFile)
+            ->setProvider($provider->getCode())
+            ->setModel($result->getModel())
+            ->setPrompt($prompt)
+            ->setRevisedPrompt($result->getRevisedPrompt())
+            ->setFile($file)
+            ->setStatus(GenerationInterface::STATUS_PREVIEW)
+            ->setAdminUserId($adminUserId)
+            ->setUsage($result->getUsage());
+        try {
+            return $this->generationRepository->save($generation);
+        } catch (LocalizedException $e) {
+            $this->previewStorage->delete($file);
+            throw $e;
+        }
     }
 
     /**

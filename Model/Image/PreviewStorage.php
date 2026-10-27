@@ -24,6 +24,11 @@ class PreviewStorage
     public const BASE_PATH = 'mago_ai_image/preview';
 
     /**
+     * Glob of the files save() writes below BASE_PATH: two single-character folders, then the file.
+     */
+    private const PREVIEW_FILES = '*/*/*';
+
+    /**
      * @var WriteInterface|null
      */
     private ?WriteInterface $mediaDirectory = null;
@@ -111,6 +116,31 @@ class PreviewStorage
             $this->getMediaDirectory()->delete($path);
         } catch (FileSystemException $e) {
             throw new LocalizedException(__('Could not delete the generated image file.'), $e);
+        }
+    }
+
+    /**
+     * Preview files last modified before a moment, as paths relative to pub/media.
+     *
+     * @param int $timestamp Unix time
+     * @return string[]
+     * @throws LocalizedException
+     */
+    public function getFilesModifiedBefore(int $timestamp): array
+    {
+        $directory = $this->filesystem->getDirectoryRead(DirectoryList::MEDIA);
+        try {
+            if (!$directory->isDirectory(self::BASE_PATH)) {
+                return [];
+            }
+
+            return array_values(array_filter(
+                $directory->search(self::PREVIEW_FILES, self::BASE_PATH),
+                static fn (string $path): bool => $directory->isFile($path)
+                    && (int) ($directory->stat($path)['mtime'] ?? $timestamp) < $timestamp
+            ));
+        } catch (FileSystemException $e) {
+            throw new LocalizedException(__('Could not read the generated image folder.'), $e);
         }
     }
 

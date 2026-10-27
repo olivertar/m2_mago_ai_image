@@ -33,6 +33,7 @@ use Orangecat\MagoAiImage\Model\ImageGenerator;
 use Orangecat\MagoAiImage\Test\Unit\Model\Image\ImageInspectorTest;
 use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 
@@ -55,7 +56,7 @@ class ImageGeneratorTest extends TestCase
     private $provider;
 
     /**
-     * @var ProductInterface|MockObject
+     * @var ProductInterface&Stub
      */
     private $product;
 
@@ -137,6 +138,7 @@ class ImageGeneratorTest extends TestCase
         $generationFactory = $this->createStub(GenerationFactory::class);
         $generationFactory->method('create')->willReturnCallback(
             static fn (): Generation => $objectManager->getObject(Generation::class)
+                ?? throw new \LogicException('Could not create a generation.')
         );
         $this->generationRepository = $this->createMock(GenerationRepositoryInterface::class);
 
@@ -230,6 +232,25 @@ class ImageGeneratorTest extends TestCase
         $this->assertSame(5, $first->getAdminUserId());
         $this->assertSame(['images' => 2], $first->getUsage());
         $this->assertSame('revised', $first->getRevisedPrompt());
+    }
+
+    public function testItKeepsStoredPreviewsWhenOneImageIsBroken(): void
+    {
+        $this->provider->method('generate')->willReturn(new ImageResult(
+            [new ImageBinary('garbage', 'image/png'), new ImageBinary(ImageInspectorTest::png(4, 4), 'image/png')],
+            'm'
+        ));
+        $this->previewStorage->method('save')->willReturn('p/1.png');
+        $this->generationRepository->method('save')->willReturnArgument(0);
+
+        $generations = $this->generator->generateForProduct(
+            'MB01',
+            'prompt',
+            [ImageGeneratorInterface::OPTION_COUNT => 2]
+        );
+
+        $this->assertCount(1, $generations);
+        $this->assertSame('p/1.png', $generations[0]->getFile());
     }
 
     public function testProviderReturningGarbageStoresNothing(): void

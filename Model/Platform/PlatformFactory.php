@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Orangecat\MagoAiImage\Model\Platform;
 
+use Orangecat\MagoAiImage\Exception\ProviderUnavailableException;
 use Symfony\AI\Platform\Bridge\Gemini\Factory as GeminiFactory;
 use Symfony\AI\Platform\Bridge\OpenAi\Factory as OpenAiFactory;
 use Symfony\AI\Platform\PlatformInterface;
@@ -17,6 +18,7 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 class PlatformFactory
 {
     public const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com';
+    private const HTTP_URL_PATTERN = '#^https?://#i';
 
     /**
      * @param HttpClientInterface|null $httpClient Replaces the default client, e.g. in tests
@@ -33,9 +35,15 @@ class PlatformFactory
      * @param string $baseUrl Without the API version: the bridge appends /v1beta
      * @param int $timeout Seconds
      * @return PlatformInterface
+     * @throws ProviderUnavailableException When the base URL is not an http or https URL
      */
-    public function createGemini(string $apiKey, string $baseUrl, int $timeout): PlatformInterface
-    {
+    public function createGemini(
+        #[\SensitiveParameter] string $apiKey,
+        string $baseUrl,
+        int $timeout
+    ): PlatformInterface {
+        $this->assertHttpUrl($baseUrl);
+
         return GeminiFactory::createPlatform(
             $apiKey,
             $this->createHttpClient($timeout),
@@ -50,9 +58,29 @@ class PlatformFactory
      * @param int $timeout Seconds
      * @return PlatformInterface
      */
-    public function createOpenAi(string $apiKey, int $timeout): PlatformInterface
+    public function createOpenAi(#[\SensitiveParameter] string $apiKey, int $timeout): PlatformInterface
     {
         return OpenAiFactory::createPlatform($apiKey, $this->createHttpClient($timeout));
+    }
+
+    /**
+     * Refuse a base URL that is not http or https.
+     *
+     * The Gemini base URL comes from configuration and the request carries the API key. Another
+     * scheme (file://, gopher://) would turn that setting into local file reads or requests to
+     * internal services.
+     *
+     * @param string $baseUrl
+     * @return void
+     * @throws ProviderUnavailableException
+     */
+    private function assertHttpUrl(string $baseUrl): void
+    {
+        if (preg_match(self::HTTP_URL_PATTERN, $baseUrl) !== 1) {
+            throw new ProviderUnavailableException(
+                __('The Google Gemini base URL must be an http or https URL.')
+            );
+        }
     }
 
     /**

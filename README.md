@@ -8,6 +8,19 @@ One module holds everything: the generation core, the Google Gemini and OpenAI p
 `dummy` provider (developer mode only) and the Mago tools. The chat model (e.g. Kimi) only
 orchestrates; the image is made by the image provider of the selected AI service.
 
+## Compatibility
+
+| | Supported |
+|---|---|
+| Magento Open Source | 2.4.8 and later |
+| Mage-OS | Releases built on Magento 2.4.8 or later |
+| PHP | 8.2 to 8.5 |
+| Mago | `mago-assistant/magento2-mago` 1.1 or later |
+| Mage-OS AI Base | `mage-os/module-ai-base` 1.1 or later |
+| Storefront | Admin only. Attached images are ordinary gallery images, so they show in any theme (Luma, Hyvä) and headless frontend. |
+
+CI tests the currently supported Mage-OS versions. Adobe Commerce is not tested.
+
 ## Install
 
 ```bash
@@ -16,44 +29,71 @@ bin/magento module:enable Orangecat_MagoAiImage
 bin/magento setup:upgrade
 ```
 
-Requires `MagoAssistant_Mago` (^1.1) and `MageOS_AiBase` (^1.1).
+## Getting started
 
-API keys live only in MageOS_AiBase. Add a Google Gemini or OpenAI service under
-`Stores > Configuration > Mage-OS > AI Configuration` first, then select it here.
+1. Add the API key once, in Mage-OS AI Base: `Stores > Configuration > Mage-OS > AI Configuration`,
+   add a **Google Gemini** or **OpenAI** service with its API key and save. The key never goes into
+   this module's settings.
+
+   ![An OpenAI service in Mage-OS AI Configuration](docs/images/ai-configuration-service.png)
+2. Open `Stores > Configuration > Mago Assistant > Image Generation`, set **Enabled** to Yes, pick
+   that service under **AI Service** and save.
+
+   ![The Image Generation settings](docs/images/config-image-generation.png)
+3. Make sure the admin role has `Catalog > Inventory > Products > Image Generation` (with
+   *Generate Previews* and *Add to Product Gallery*) and access to products, and that the image
+   tools are allowed for the user under `Stores > Admin Assistant > Skills & Permissions`.
+4. Open the Mago chat panel and ask, for example: *Generate an image for WJ12 of a person walking
+   through the city wearing this jacket, 3:4 format*. Confirm the card: every image is billed by
+   the provider. The previews appear in the chat.
+5. Ask *Add the first one as the base image*. After confirming, the image is in the product's
+   gallery under `Catalog > Products > WJ12 > Images and Videos`.
+
+   ![A generated image next to the original in the product gallery](docs/images/product-gallery.png)
+
+`bin/magento mago:ai-image:providers` shows the selected service, which provider serves it and
+whether generation can run.
 
 ## Configuration
 
-`Stores > Configuration > Mago Assistant > Image Generation` (`mago_ai_image/*`).
+All settings are under `Stores > Configuration > Mago Assistant > Image Generation`
+(`mago_ai_image/*`) and are **default scope only**: the Mago tools, the cleanup cron and the CLI
+run without a store, so a website value would never be read.
 
-General (`mago_ai_image/general/*`):
+### General
 
-| Field | Path | Default |
+| Setting | Default | What it does |
 |---|---|---|
-| Enabled | `enabled` | No |
-| AI Service | `ai_service` | — (MageOS_AiBase row id, default scope only) |
-| Maximum Images per Request | `max_images` | 4 |
-| Provider Timeout (seconds) | `timeout` | 90 |
-| Maximum Reference Image Size (MB) | `max_reference_mb` | 10 |
-| Keep Unattached Previews (days) | `preview_retention_days` | 7 |
+| Enabled | No | Shows the image tools to Mago. While No, Mago doesn't offer them and the CLI refuses to generate. |
+| AI Service | (none) | A Google Gemini or OpenAI service from Mage-OS AI Configuration. Its API key is used and its type picks the provider: a Google row uses Gemini, an OpenAI row uses OpenAI. Its chat model is not used. "OpenAI compatible" rows (such as Kimi) are not offered: they have no image API. |
+| Maximum Images per Request | 4 | Upper limit for one generation (1 to 10). The provider's own limit applies too. Each image is billed. |
+| Provider Timeout (seconds) | 90 | Per call to the provider (10 to 600). Gemini makes one call per image, so a request for several images can take several times this long. |
+| Maximum Reference Image Size (MB) | 10 | A larger gallery image is refused as reference instead of being sent. |
+| Keep Unattached Previews (days) | 7 | After this, the daily cleanup discards previews nobody attached and removes the preview copy of attached ones (the gallery keeps its own copy). Until then they stay visible in the Mago chat history. |
 
-The AI Service lists `google` and `openai` rows only ("OpenAI compatible" rows such as Kimi have
-no image API). Its API key is used and its code picks the provider: a `google` row uses Gemini, an
-`openai` row uses OpenAI. Its chat model is not used. The field is default scope only, because
-MageOS_AiBase resolves rows at default scope in the admin, cron and the CLI.
+### Google Gemini (Nano Banana)
 
-Google Gemini (`mago_ai_image/gemini/*`) and OpenAI (`mago_ai_image/openai/*`):
+Used when the AI Service is a Google Gemini service.
 
-| Field | Path | Notes |
+| Setting | Default | What it does |
 |---|---|---|
-| Model | `model` | Gemini: `gemini-nano-banana-2.1`; OpenAI: `gpt-image-2.5-sunburst` |
-| Image Size / Quality | `image_size` (Gemini: 1K/2K/4K), `quality` (OpenAI: low/medium/high) | Empty = model default |
-| — | `base_url` | Gemini only, `config.xml` only, without the API version |
+| Model | `gemini-nano-banana-2.1` | The image model. `gemini-3.1-flash-lite-image` is the cheapest, `gemini-3-pro-image` the highest quality. Any image model name works, including ones newer than this module. |
+| Image Size | Model default | 1K, 2K or 4K. Larger images cost more; not every model supports every size. |
 
-The reference image and the prompt are sent to the selected provider.
+`mago_ai_image/gemini/base_url` (`https://generativelanguage.googleapis.com`, without the API
+version) can be changed in `config.xml` or with `bin/magento config:set`, for example to route
+through a proxy. It must be an http or https URL.
 
-Upgrading from a version with per-provider credentials: `setup:upgrade` imports a key entered in a
-provider group as a MageOS_AiBase row, selects the row of the provider that was selected, and
-removes the old `provider`, `credential_source`, `api_key` and `ai_service` settings.
+### OpenAI (GPT Image)
+
+Used when the AI Service is an OpenAI service.
+
+| Setting | Default | What it does |
+|---|---|---|
+| Model | `gpt-image-2.5-sunburst` | The GPT Image model. `gpt-image-2.5-flare` is faster; `gpt-image-1` models only support 1:1, 3:2 and 2:3. GPT Image models may require API Organization Verification in the OpenAI console. |
+| Quality | Model default | Low, medium or high. Higher quality costs more and takes longer. |
+
+The reference image and the prompt are sent to the provider of the selected service.
 
 ## Providers
 
@@ -141,11 +181,31 @@ Products) and `Orangecat_MagoAiImage::config`. The generate and attach tools als
    `Model\Provider\Gemini`: a platform from the bridge factory, the model built from its name, and
    `Model\Platform\ResponseReader` to check the response before converting it.
 
+## Troubleshooting
+
+- **Mago doesn't offer to generate images.** Run `bin/magento mago:ai-image:providers`: it says
+  whether the module is enabled, which AI service is selected and whether its provider can run.
+  Also check the role and the user's skill permissions from *Getting started*.
+- **"No AI service is selected" or "is not a … service".** Pick a Google Gemini or OpenAI row
+  under **AI Service**. A row that was deleted or disabled in AI Configuration has to be picked
+  again. After changing settings with `config:set`, flush the config cache.
+- **The chat shows text where the preview should be.** The chat panel only loads images from the
+  admin's own host. Previews are served from the store's media URL, so a CDN or separate media
+  domain, or a custom admin domain, keeps them from showing. The preview still exists and can be
+  attached.
+- **Requests time out.** Raise **Provider Timeout**, ask for fewer images at once, or pick a
+  faster model. PHP-FPM, the web server and any proxy in front of the admin need a timeout at least
+  as long as the whole request.
+- **Old previews pile up in `pub/media/mago_ai_image/preview`.** The cleanup runs daily from
+  Magento cron (`mago_ai_image_cleanup_previews`); check that cron is running.
+
 ## Privacy
 
 The reference image and the prompt are sent to the configured provider (Google, OpenAI). The admin
 who generated each preview is stored in `mago_ai_image_generation.admin_user_id`.
 
-## License
+## Links
 
-MIT, see [LICENSE](LICENSE).
+- [CHANGELOG](CHANGELOG.md)
+- [Security policy](SECURITY.md)
+- License: MIT, see [LICENSE](LICENSE)

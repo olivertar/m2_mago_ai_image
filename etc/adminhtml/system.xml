@@ -6,15 +6,17 @@
             One section under the Mago Assistant tab: general settings, including the MageOS_AiBase
             service whose key is used and whose code picks the provider, plus one group per provider
             with the id of its provider code (model and provider-specific options, never a key).
+            Default scope only: the Mago tools, the cron and the CLI run without a store, so a
+            website value would never be read.
         -->
-        <section id="mago_ai_image" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1">
+        <section id="mago_ai_image" translate="label" type="text" sortOrder="20" showInDefault="1">
             <label>Image Generation</label>
             <tab>mago_assistant</tab>
             <resource>Orangecat_MagoAiImage::config</resource>
-            <group id="general" translate="label comment" type="text" sortOrder="10" showInDefault="1" showInWebsite="1">
+            <group id="general" translate="label comment" type="text" sortOrder="10" showInDefault="1">
                 <label>General</label>
                 <comment>Generates product images from a gallery image and a prompt. The reference image and the prompt are sent to the selected provider.</comment>
-                <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1">
+                <field id="enabled" translate="label" type="select" sortOrder="10" showInDefault="1">
                     <label>Enabled</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
@@ -23,16 +25,16 @@
                     <source_model>Orangecat\MagoAiImage\Model\Config\Source\ImageAiService</source_model>
                     <comment>A Google Gemini or OpenAI service from Stores &gt; Configuration &gt; Mage-OS &gt; AI Configuration. Its API key is used and its type picks the image provider. Its chat model is not used: set the image model in the provider's group below.</comment>
                 </field>
-                <field id="max_images" translate="label comment" type="text" sortOrder="30" showInDefault="1" showInWebsite="1">
+                <field id="max_images" translate="label comment" type="text" sortOrder="30" showInDefault="1">
                     <label>Maximum Images per Request</label>
                     <validate>required-entry validate-digits validate-digits-range digits-range-1-10</validate>
                     <comment>Each image is billed by the provider.</comment>
                 </field>
-                <field id="timeout" translate="label" type="text" sortOrder="40" showInDefault="1" showInWebsite="1">
+                <field id="timeout" translate="label" type="text" sortOrder="40" showInDefault="1">
                     <label>Provider Timeout (seconds)</label>
                     <validate>required-entry validate-digits validate-digits-range digits-range-10-600</validate>
                 </field>
-                <field id="max_reference_mb" translate="label" type="text" sortOrder="50" showInDefault="1" showInWebsite="1">
+                <field id="max_reference_mb" translate="label" type="text" sortOrder="50" showInDefault="1">
                     <label>Maximum Reference Image Size (MB)</label>
                     <validate>required-entry validate-digits validate-digits-range digits-range-1-50</validate>
                 </field>
@@ -42,29 +44,29 @@
                     <comment>Previews are deleted afterwards, also those added to a product gallery (the gallery keeps its own copy). Until then they stay visible in the Mago chat history.</comment>
                 </field>
             </group>
-            <group id="gemini" translate="label comment" type="text" sortOrder="100" showInDefault="1" showInWebsite="1">
+            <group id="gemini" translate="label comment" type="text" sortOrder="100" showInDefault="1">
                 <label>Google Gemini (Nano Banana)</label>
                 <comment>Used when the AI Service above is a Google Gemini service.</comment>
-                <field id="model" translate="label comment" type="text" sortOrder="40" showInDefault="1" showInWebsite="1">
+                <field id="model" translate="label comment" type="text" sortOrder="40" showInDefault="1">
                     <label>Model</label>
                     <validate>required-entry</validate>
                     <comment>An image model, e.g. gemini-nano-banana-2.1 (recommended), gemini-3.1-flash-lite-image (cheapest) or gemini-3-pro-image (highest quality).</comment>
                 </field>
-                <field id="image_size" translate="label comment" type="select" sortOrder="50" showInDefault="1" showInWebsite="1">
+                <field id="image_size" translate="label comment" type="select" sortOrder="50" showInDefault="1">
                     <label>Image Size</label>
                     <source_model>Orangecat\MagoAiImage\Model\Config\Source\GeminiImageSize</source_model>
                     <comment>Larger images cost more. Not every model supports every size.</comment>
                 </field>
             </group>
-            <group id="openai" translate="label comment" type="text" sortOrder="110" showInDefault="1" showInWebsite="1">
+            <group id="openai" translate="label comment" type="text" sortOrder="110" showInDefault="1">
                 <label>OpenAI (GPT Image)</label>
                 <comment>Used when the AI Service above is an OpenAI service. GPT Image models may require API Organization Verification in the OpenAI console.</comment>
-                <field id="model" translate="label comment" type="text" sortOrder="40" showInDefault="1" showInWebsite="1">
+                <field id="model" translate="label comment" type="text" sortOrder="40" showInDefault="1">
                     <label>Model</label>
                     <validate>required-entry</validate>
                     <comment>A GPT Image model, e.g. gpt-image-2.5-sunburst (recommended for editing a product photo), gpt-image-2.5-flare (faster) or gpt-image-2. gpt-image-1 models only support 1:1, 3:2 and 2:3.</comment>
                 </field>
-                <field id="quality" translate="label comment" type="select" sortOrder="50" showInDefault="1" showInWebsite="1">
+                <field id="quality" translate="label comment" type="select" sortOrder="50" showInDefault="1">
                     <label>Quality</label>
                     <source_model>Orangecat\MagoAiImage\Model\Config\Source\OpenAiQuality</source_model>
                     <comment>Higher quality costs more and takes longer.</comment>

@@ -1,0 +1,9 @@
+parameters:
+    level: 8
+    paths:
+        - .
+    excludePaths:
+        - vendor/*
+        # Integration tests need Magento's integration test framework (Magento\TestFramework),
+        # which only exists inside a store. check-extension runs them there.
+        - Test/Integration/*

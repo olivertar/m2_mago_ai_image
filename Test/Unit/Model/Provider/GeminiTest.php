@@ -151,6 +151,14 @@ class GeminiTest extends TestCase
         $this->assertStringStartsWith('https://proxy.example.com/v1beta/models/', $this->requests[0]['url']);
     }
 
+    public function testItRefusesABaseUrlThatIsNotHttp(): void
+    {
+        $this->values['base_url'] = 'file:///etc/passwd';
+
+        $this->expectException(ProviderUnavailableException::class);
+        $this->gemini->generate(new ImageRequest('prompt'));
+    }
+
     public function testOmitsImageConfigWhenNothingRequested(): void
     {
         $this->gemini->generate(new ImageRequest('prompt'));
@@ -165,6 +173,21 @@ class GeminiTest extends TestCase
         $this->assertCount(3, $this->requests);
         $this->assertCount(3, $result->getImages());
         $this->assertSame(3, $result->getUsage()['calls']);
+    }
+
+    public function testItKeepsImagesOfEarlierCallsWhenALaterCallFails(): void
+    {
+        $this->responses[] = $this->json($this->imageResponse('first'));
+        $this->responses[] = $this->json($this->imageResponse('second'));
+        $this->responses[] = $this->json(
+            ['error' => ['code' => 429, 'message' => 'Quota exceeded', 'status' => 'RESOURCE_EXHAUSTED']],
+            429
+        );
+
+        $result = $this->gemini->generate(new ImageRequest('prompt', [], null, 3));
+
+        $this->assertCount(2, $result->getImages());
+        $this->assertSame(2, $result->getUsage()['calls']);
     }
 
     public function testThoughtImagesAreSkipped(): void

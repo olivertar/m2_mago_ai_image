@@ -58,7 +58,9 @@ class GenerationManagementTest extends TestCase
     protected function setUp(): void
     {
         $objectManager = new ObjectManager($this);
-        $this->generation = $objectManager->getObject(Generation::class);
+        $generation = $objectManager->getObject(Generation::class);
+        $this->assertInstanceOf(Generation::class, $generation);
+        $this->generation = $generation;
         $this->generation->setData(GenerationInterface::GENERATION_ID, 9);
         $this->generation->setProductId(42)
             ->setFile('mago_ai_image/preview/a/b/ab.png')

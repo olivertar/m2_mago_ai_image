@@ -66,7 +66,7 @@ class ImageInspectorTest extends TestCase
 
     public static function png(int $width, int $height): string
     {
-        $gd = imagecreatetruecolor($width, $height);
+        $gd = imagecreatetruecolor(max(1, $width), max(1, $height));
         ob_start();
         imagepng($gd);
 

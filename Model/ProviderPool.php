@@ -22,7 +22,7 @@ class ProviderPool implements ProviderPoolInterface
 
     /**
      * @param SelectedAiService $selectedAiService
-     * @param ImageProviderInterface[] $providers
+     * @param array<string,mixed> $providers From di.xml, so each entry is checked here
      */
     public function __construct(
         private readonly SelectedAiService $selectedAiService,
