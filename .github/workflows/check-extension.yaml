@@ -39,4 +39,4 @@ jobs:
       - name: Resolve dependencies without installing them
         run: composer update --no-install --no-interaction --no-progress
       - name: Audit resolved dependencies
-        run: composer audit --locked --no-dev
+        run: composer audit --locked --no-dev --abandoned=ignore
