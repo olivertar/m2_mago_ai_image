@@ -14,8 +14,8 @@
     <preference for="Orangecat\MagoAiImage\Api\Data\ProviderCapabilitiesInterface" type="Orangecat\MagoAiImage\Model\Data\ProviderCapabilities"/>
 
     <!--
-        Image providers. Another module can add its own here; a provider with its own API key must
-        also mark mago_ai_image/<code>/api_key as sensitive in Magento\Config\Model\Config\TypePool.
+        Image providers. Another module can add its own here, and add the MageOS_AiBase codes it
+        serves to the serviceCodes of the ImageAiService virtual type below.
     -->
     <type name="Orangecat\MagoAiImage\Model\ProviderPool">
         <arguments>
@@ -27,34 +27,19 @@
         </arguments>
     </type>
 
-    <virtualType name="Orangecat\MagoAiImage\Model\Config\Source\GoogleAiBaseService"
-                 type="Orangecat\MagoAiImage\Model\Config\Source\AiBaseService">
+    <!--
+        AI services an image provider can use. Only real OpenAI rows: an "OpenAI compatible" row
+        (e.g. Kimi) has no image API.
+    -->
+    <virtualType name="Orangecat\MagoAiImage\Model\Config\Source\ImageAiService"
+                 type="MageOS\AiBase\Model\Config\Source\ConfiguredService">
         <arguments>
-            <argument name="codes" xsi:type="array">
+            <argument name="serviceCodes" xsi:type="array">
                 <item name="google" xsi:type="string">google</item>
-            </argument>
-        </arguments>
-    </virtualType>
-
-    <!-- Only real OpenAI rows: an "OpenAI compatible" row (e.g. Kimi) has no image API. -->
-    <virtualType name="Orangecat\MagoAiImage\Model\Config\Source\OpenAiAiBaseService"
-                 type="Orangecat\MagoAiImage\Model\Config\Source\AiBaseService">
-        <arguments>
-            <argument name="codes" xsi:type="array">
                 <item name="openai" xsi:type="string">openai</item>
             </argument>
         </arguments>
     </virtualType>
-
-    <!-- Keep the keys out of app:config:dump, like the MageOS_AiBase credentials. -->
-    <type name="Magento\Config\Model\Config\TypePool">
-        <arguments>
-            <argument name="sensitive" xsi:type="array">
-                <item name="mago_ai_image/gemini/api_key" xsi:type="string">1</item>
-                <item name="mago_ai_image/openai/api_key" xsi:type="string">1</item>
-            </argument>
-        </arguments>
-    </type>
 
     <type name="Magento\Framework\Console\CommandList">
         <arguments>

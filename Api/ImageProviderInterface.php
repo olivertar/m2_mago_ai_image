@@ -39,9 +39,13 @@ interface ImageProviderInterface
     public function getCapabilities(): ProviderCapabilitiesInterface;
 
     /**
-     * MageOS_AiBase service codes whose configured rows can supply this provider's credentials.
+     * MageOS_AiBase service codes this provider serves.
      *
-     * Empty when the provider only takes its own API key.
+     * Selecting a row of one of these codes under General > AI Service makes this the provider
+     * and supplies its API key. Add the codes to the `serviceCodes` argument of the
+     * `Orangecat\MagoAiImage\Model\Config\Source\ImageAiService` virtual type too, or the
+     * dropdown will not offer them. Empty for a provider without credentials, which can then only
+     * be called by code (`mago:ai-image:generate --provider=<code>`).
      *
      * @return string[]
      */

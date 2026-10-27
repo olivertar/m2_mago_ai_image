@@ -39,7 +39,7 @@ interface ProviderPoolInterface
     public function get(string $code): ImageProviderInterface;
 
     /**
-     * The provider selected in configuration, if registered and available.
+     * The provider serving the AI service selected in configuration, if registered and available.
      *
      * @param int|null $storeId
      * @return ImageProviderInterface

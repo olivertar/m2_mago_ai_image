@@ -9,7 +9,7 @@
                         <!-- Under Products: the tools read and change product galleries, and also check
                              Magento_Catalog::products at run time (Model\ProductAccess). -->
                         <resource id="Magento_Catalog::products">
-                            <resource id="Orangecat_MagoAiImage::ai_image" title="AI Product Images" translate="title" sortOrder="100">
+                            <resource id="Orangecat_MagoAiImage::ai_image" title="Image Generation" translate="title" sortOrder="100">
                                 <resource id="Orangecat_MagoAiImage::generate" title="Generate Previews" translate="title" sortOrder="10"/>
                                 <resource id="Orangecat_MagoAiImage::attach" title="Add to Product Gallery" translate="title" sortOrder="20"/>
                             </resource>
@@ -19,7 +19,7 @@
                 <resource id="Magento_Backend::stores">
                     <resource id="Magento_Backend::stores_settings">
                         <resource id="Magento_Config::config">
-                            <resource id="Orangecat_MagoAiImage::config" title="Mago AI Product Images" translate="title" sortOrder="110"/>
+                            <resource id="Orangecat_MagoAiImage::config" title="Mago Image Generation" translate="title" sortOrder="110"/>
                         </resource>
                     </resource>
                 </resource>

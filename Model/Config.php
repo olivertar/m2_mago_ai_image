@@ -13,7 +13,7 @@ use Magento\Store\Model\ScopeInterface;
 class Config
 {
     private const XML_PATH_ENABLED = 'mago_ai_image/general/enabled';
-    private const XML_PATH_PROVIDER = 'mago_ai_image/general/provider';
+    private const XML_PATH_AI_SERVICE = 'mago_ai_image/general/ai_service';
     private const XML_PATH_TIMEOUT = 'mago_ai_image/general/timeout';
     private const XML_PATH_MAX_IMAGES = 'mago_ai_image/general/max_images';
     private const XML_PATH_MAX_REFERENCE_MB = 'mago_ai_image/general/max_reference_mb';
@@ -41,14 +41,16 @@ class Config
     }
 
     /**
-     * Code of the default provider.
+     * Row id of the MageOS_AiBase service selected for image generation.
      *
-     * @param int|null $storeId
+     * Read at default scope only: AiServiceSelectorInterface resolves rows at default scope in
+     * adminhtml, cron and the CLI, so a website-level choice would never be honoured.
+     *
      * @return string
      */
-    public function getProviderCode(?int $storeId = null): string
+    public function getAiServiceId(): string
     {
-        return trim((string) $this->getValue(self::XML_PATH_PROVIDER, $storeId));
+        return trim((string) $this->scopeConfig->getValue(self::XML_PATH_AI_SERVICE));
     }
 
     /**

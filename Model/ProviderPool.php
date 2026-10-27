@@ -21,11 +21,11 @@ class ProviderPool implements ProviderPoolInterface
     private array $providers = [];
 
     /**
-     * @param Config $config
+     * @param SelectedAiService $selectedAiService
      * @param ImageProviderInterface[] $providers
      */
     public function __construct(
-        private readonly Config $config,
+        private readonly SelectedAiService $selectedAiService,
         array $providers = []
     ) {
         foreach ($providers as $key => $provider) {
@@ -76,14 +76,10 @@ class ProviderPool implements ProviderPoolInterface
      */
     public function getDefault(?int $storeId = null): ImageProviderInterface
     {
-        $code = $this->config->getProviderCode($storeId);
-        if ($code === '') {
-            throw new ProviderUnavailableException(__('No image provider is selected in the configuration.'));
-        }
-        if (!isset($this->providers[$code])) {
-            throw new ProviderUnavailableException(__('The image provider "%1" is not installed.', $code));
-        }
-        $provider = $this->providers[$code];
+        $service = $this->selectedAiService->get();
+        $provider = $this->findByServiceCode($service->getCode()) ?? throw new ProviderUnavailableException(
+            __('No image provider can use the selected AI service (%1).', $service->getCode())
+        );
         if (!$provider->isAvailable($storeId)) {
             throw new ProviderUnavailableException(
                 __('The image provider "%1" is not configured.', $provider->getLabel())
@@ -91,5 +87,22 @@ class ProviderPool implements ProviderPoolInterface
         }
 
         return $provider;
+    }
+
+    /**
+     * The first provider serving MageOS_AiBase rows of this code.
+     *
+     * @param string $serviceCode
+     * @return ImageProviderInterface|null
+     */
+    private function findByServiceCode(string $serviceCode): ?ImageProviderInterface
+    {
+        $matches = array_filter(
+            $this->providers,
+            static fn (ImageProviderInterface $provider): bool =>
+                in_array($serviceCode, $provider->getAiBaseServiceCodes(), true)
+        );
+
+        return $matches === [] ? null : reset($matches);
     }
 }

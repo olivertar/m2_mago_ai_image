@@ -5,18 +5,16 @@ declare(strict_types=1);
 namespace Orangecat\MagoAiImage\Model;
 
 use Magento\Framework\App\Config\ScopeConfigInterface;
-use Magento\Framework\Encryption\EncryptorInterface;
 use Magento\Store\Model\ScopeInterface;
-use MageOS\AiBase\Api\AiServiceSelectorInterface;
+use MageOS\AiBase\Api\Data\AiServiceInterface;
 use Orangecat\MagoAiImage\Api\ImageProviderInterface;
 use Orangecat\MagoAiImage\Api\ProviderConfigInterface;
 use Orangecat\MagoAiImage\Exception\ProviderUnavailableException;
 
 /**
- * Reads `mago_ai_image/<code>/*` and resolves the provider's API key.
+ * Reads `mago_ai_image/<code>/*` and hands out the key of the selected MageOS_AiBase service.
  *
- * The own key is saved through Magento's Encrypted backend model, so it is decrypted here. A
- * MageOS_AiBase row is handed over already decrypted by AiServiceSelectorInterface.
+ * AiServiceSelectorInterface returns rows already decrypted, so no key is decrypted here.
  */
 class ProviderConfig implements ProviderConfigInterface
 {
@@ -25,26 +23,12 @@ class ProviderConfig implements ProviderConfigInterface
 
     /**
      * @param ScopeConfigInterface $scopeConfig
-     * @param EncryptorInterface $encryptor
-     * @param AiServiceSelectorInterface $aiServiceSelector
+     * @param SelectedAiService $selectedAiService
      */
     public function __construct(
         private readonly ScopeConfigInterface $scopeConfig,
-        private readonly EncryptorInterface $encryptor,
-        private readonly AiServiceSelectorInterface $aiServiceSelector
+        private readonly SelectedAiService $selectedAiService
     ) {
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function getCredentialSource(ImageProviderInterface $provider, ?int $storeId = null): string
-    {
-        $source = $this->read($provider, self::FIELD_CREDENTIAL_SOURCE, $storeId);
-
-        return $source === self::CREDENTIAL_SOURCE_AI_BASE && $provider->getAiBaseServiceCodes() !== []
-            ? self::CREDENTIAL_SOURCE_AI_BASE
-            : self::CREDENTIAL_SOURCE_OWN;
     }
 
     /**
@@ -64,13 +48,10 @@ class ProviderConfig implements ProviderConfigInterface
      */
     public function getApiKey(ImageProviderInterface $provider, ?int $storeId = null): string
     {
-        $apiKey = $this->getCredentialSource($provider, $storeId) === self::CREDENTIAL_SOURCE_AI_BASE
-            ? $this->getAiBaseApiKey($provider, $storeId)
-            : $this->getOwnApiKey($provider, $storeId);
-
+        $apiKey = $this->readApiKey($this->getServiceFor($provider));
         if ($apiKey === '') {
             throw new ProviderUnavailableException(
-                __('No API key is configured for the image provider "%1".', $provider->getLabel())
+                __('The AI service selected for image generation has no API key.')
             );
         }
 
@@ -92,57 +73,38 @@ class ProviderConfig implements ProviderConfigInterface
      */
     public function getValue(ImageProviderInterface $provider, string $field, ?int $storeId = null): ?string
     {
-        if ($field === self::FIELD_API_KEY) {
-            // The key never leaves this class undecrypted or through the generic reader.
-            return null;
-        }
         $value = $this->read($provider, $field, $storeId);
 
         return $value === '' ? null : $value;
     }
 
     /**
-     * Decrypt the provider's own key.
+     * The selected service, provided it is one this provider serves.
      *
      * @param ImageProviderInterface $provider
-     * @param int|null $storeId
-     * @return string
+     * @return AiServiceInterface
+     * @throws ProviderUnavailableException
      */
-    private function getOwnApiKey(ImageProviderInterface $provider, ?int $storeId): string
+    private function getServiceFor(ImageProviderInterface $provider): AiServiceInterface
     {
-        $encrypted = $this->read($provider, self::FIELD_API_KEY, $storeId);
+        $service = $this->selectedAiService->get();
+        if (!in_array($service->getCode(), $provider->getAiBaseServiceCodes(), true)) {
+            throw new ProviderUnavailableException(
+                __('The AI service selected for image generation is not a %1 service.', $provider->getLabel())
+            );
+        }
 
-        return $encrypted === '' ? '' : trim((string) $this->encryptor->decrypt($encrypted));
+        return $service;
     }
 
     /**
-     * Take the key of the selected MageOS_AiBase row, if it is of an accepted backend.
+     * The service row's key, trimmed.
      *
-     * @param ImageProviderInterface $provider
-     * @param int|null $storeId
+     * @param AiServiceInterface $service
      * @return string
-     * @throws ProviderUnavailableException
      */
-    private function getAiBaseApiKey(ImageProviderInterface $provider, ?int $storeId): string
+    private function readApiKey(AiServiceInterface $service): string
     {
-        $serviceId = $this->read($provider, self::FIELD_AI_SERVICE, $storeId);
-        $service = $serviceId === '' ? null : $this->aiServiceSelector->getById($serviceId);
-        if ($service === null) {
-            throw new ProviderUnavailableException(
-                __(
-                    'The AI service selected for the image provider "%1" no longer exists or is disabled.',
-                    $provider->getLabel()
-                )
-            );
-        }
-        if (!in_array($service->getCode(), $provider->getAiBaseServiceCodes(), true)) {
-            throw new ProviderUnavailableException(
-                __(
-                    'The AI service selected for the image provider "%1" is not a supported backend.',
-                    $provider->getLabel()
-                )
-            );
-        }
         $apiKey = $service->getConfiguration()[self::AI_BASE_API_KEY] ?? '';
 
         return is_string($apiKey) ? trim($apiKey) : '';

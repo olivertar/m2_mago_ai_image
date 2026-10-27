@@ -6,7 +6,7 @@ as **previews** and only reach the product gallery when someone attaches them.
 
 One module holds everything: the generation core, the Google Gemini and OpenAI providers, the
 `dummy` provider (developer mode only) and the Mago tools. The chat model (e.g. Kimi) only
-orchestrates; the image is made by the selected image provider.
+orchestrates; the image is made by the image provider of the selected AI service.
 
 ## Install
 
@@ -16,40 +16,49 @@ bin/magento module:enable Orangecat_MagoAiImage
 bin/magento setup:upgrade
 ```
 
-Requires `MagoAssistant_Mago` (^1.1) and `MageOS_AiBase`.
+Requires `MagoAssistant_Mago` (^1.1) and `MageOS_AiBase` (^1.1).
+
+API keys live only in MageOS_AiBase. Add a Google Gemini or OpenAI service under
+`Stores > Configuration > Mage-OS > AI Configuration` first, then select it here.
 
 ## Configuration
 
-`Stores > Configuration > Mago Assistant > AI Product Images` (`mago_ai_image/*`).
+`Stores > Configuration > Mago Assistant > Image Generation` (`mago_ai_image/*`).
 
 General (`mago_ai_image/general/*`):
 
 | Field | Path | Default |
 |---|---|---|
 | Enabled | `enabled` | No |
-| Image Provider | `provider` | — |
+| AI Service | `ai_service` | — (MageOS_AiBase row id, default scope only) |
 | Maximum Images per Request | `max_images` | 4 |
 | Provider Timeout (seconds) | `timeout` | 90 |
 | Maximum Reference Image Size (MB) | `max_reference_mb` | 10 |
 | Keep Unattached Previews (days) | `preview_retention_days` | 7 |
 
+The AI Service lists `google` and `openai` rows only ("OpenAI compatible" rows such as Kimi have
+no image API). Its API key is used and its code picks the provider: a `google` row uses Gemini, an
+`openai` row uses OpenAI. Its chat model is not used. The field is default scope only, because
+MageOS_AiBase resolves rows at default scope in the admin, cron and the CLI.
+
 Google Gemini (`mago_ai_image/gemini/*`) and OpenAI (`mago_ai_image/openai/*`):
 
 | Field | Path | Notes |
 |---|---|---|
-| Credentials | `credential_source` | `own` (key below) or `ai_base` (a MageOS_AiBase row: `google` for Gemini, `openai` for OpenAI; "OpenAI compatible" rows such as Kimi have no image API) |
-| API Key | `api_key` | `obscure` field, `Encrypted` backend, `sensitive` in `TypePool` |
-| AI Service | `ai_service` | MageOS_AiBase row id |
 | Model | `model` | Gemini: `gemini-nano-banana-2.1`; OpenAI: `gpt-image-2.5-sunburst` |
 | Image Size / Quality | `image_size` (Gemini: 1K/2K/4K), `quality` (OpenAI: low/medium/high) | Empty = model default |
 | — | `base_url` | Gemini only, `config.xml` only, without the API version |
 
 The reference image and the prompt are sent to the selected provider.
 
+Upgrading from a version with per-provider credentials: `setup:upgrade` imports a key entered in a
+provider group as a MageOS_AiBase row, selects the row of the provider that was selected, and
+removes the old `provider`, `credential_source`, `api_key` and `ai_service` settings.
+
 ## Providers
 
 Gemini and OpenAI go through the Symfony AI bridges (`symfony/ai-gemini-platform`,
-`symfony/ai-open-ai-platform`, `^0.14` like MageOS_AiBase), built per request by
+`symfony/ai-open-ai-platform`, `^0.15` like MageOS_AiBase 1.1), built per request by
 `Model\Platform\PlatformFactory` with the configured timeout and no redirects. The model is built
 from the configured name instead of the bridge catalog, so newer models work without a bridge
 release. `Model\Platform\ResponseReader` reads the HTTP status and body before the bridge
@@ -77,7 +86,7 @@ Errors are mapped to `ProviderUnavailableException` (key, access, unknown model)
 | `mago_product_image_generate` | write | `Orangecat_MagoAiImage::generate` | Generates previews from a gallery image and a prompt; confirmed by the admin, since every image is billed |
 | `mago_product_image_attach` | write | `Orangecat_MagoAiImage::attach` | Adds a preview to the product gallery, with roles and label |
 
-The tools are hidden while generation is disabled or the default provider has no credentials. A
+The tools are hidden while generation is disabled or no usable AI service is selected. A
 call that cannot succeed (no product permission, unknown SKU, empty prompt, preview already attached,
 unknown role) is refused before the confirmation card. Previews are served from this store's media URL, so the
 chat panel shows them inline (it only loads images from its own origin).
@@ -119,18 +128,15 @@ Products) and `Orangecat_MagoAiImage::config`. The generate and attach tools als
 
 1. Implement `Orangecat\MagoAiImage\Api\ImageProviderInterface` and add it to the `providers`
    argument of `Orangecat\MagoAiImage\Model\ProviderPool` in `di.xml`.
-2. Add a group with the provider code to the `mago_ai_image` section in
-   `etc/adminhtml/system.xml`, like the `gemini` group: `credential_source`, `api_key`
-   (`obscure` + `Magento\Config\Model\Config\Backend\Encrypted`), `ai_service` (a virtualType of
-   `Orangecat\MagoAiImage\Model\Config\Source\AiBaseService` with the accepted MageOS_AiBase codes),
-   `model`. Mark `mago_ai_image/<code>/api_key` as sensitive in
-   `Magento\Config\Model\Config\TypePool`.
-
-   Do **not** declare `backend_model="...Encrypted"` on the key in `config.xml`: Magento would
-   decrypt the value on read, and `ProviderConfigInterface` would decrypt it a second time.
-3. Read settings only through `ProviderConfigInterface` (`getApiKey()`, `getModel()`,
+2. Return the MageOS_AiBase codes the provider serves from `getAiBaseServiceCodes()`, and add
+   them to the `serviceCodes` argument of the `Orangecat\MagoAiImage\Model\Config\Source\ImageAiService`
+   virtual type in your `di.xml`, so the AI Service dropdown offers those rows.
+3. Add a group with the provider code to the `mago_ai_image` section in
+   `etc/adminhtml/system.xml`, like the `gemini` group: `model` and any provider-specific
+   options. No key fields: the key comes from the selected MageOS_AiBase row.
+4. Read settings only through `ProviderConfigInterface` (`getApiKey()`, `getModel()`,
    `getValue()`). Never log or return the key.
-4. Use `Model\Config::getTimeout()` as the HTTP timeout and throw the exceptions above with
+5. Use `Model\Config::getTimeout()` as the HTTP timeout and throw the exceptions above with
    messages fit for an administrator. For a provider with a Symfony AI bridge, follow
    `Model\Provider\Gemini`: a platform from the bridge factory, the model built from its name, and
    `Model\Platform\ResponseReader` to check the response before converting it.

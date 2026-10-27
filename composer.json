@@ -7,8 +7,9 @@
         "php": "~8.2.0||~8.3.0||~8.4.0||~8.5.0",
         "ext-gd": "*",
         "magento/module-media-storage": "*",
+        "mage-os/module-ai-base": "^1.1",
         "mago-assistant/magento2-mago": "^1.1",
-        "symfony/ai-gemini-platform": "^0.14"
+        "symfony/ai-gemini-platform": "^0.15"
     },
     "autoload": {
         "files": [

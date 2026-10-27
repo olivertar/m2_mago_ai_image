@@ -3,12 +3,12 @@
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
     <system>
         <!--
-            One section under the Mago Assistant tab: general settings plus one group per provider,
-            with the id of its provider code (credential_source, api_key with the obscure field and
-            Encrypted backend, ai_service, model).
+            One section under the Mago Assistant tab: general settings, including the MageOS_AiBase
+            service whose key is used and whose code picks the provider, plus one group per provider
+            with the id of its provider code (model and provider-specific options, never a key).
         -->
         <section id="mago_ai_image" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1">
-            <label>AI Product Images</label>
+            <label>Image Generation</label>
             <tab>mago_assistant</tab>
             <resource>Orangecat_MagoAiImage::config</resource>
             <group id="general" translate="label comment" type="text" sortOrder="10" showInDefault="1" showInWebsite="1">
@@ -18,10 +18,10 @@
                     <label>Enabled</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
                 </field>
-                <field id="provider" translate="label comment" type="select" sortOrder="20" showInDefault="1" showInWebsite="1">
-                    <label>Image Provider</label>
-                    <source_model>Orangecat\MagoAiImage\Model\Config\Source\Provider</source_model>
-                    <comment>Configure the provider's credentials and model in its group below.</comment>
+                <field id="ai_service" translate="label comment" type="select" sortOrder="20" showInDefault="1">
+                    <label>AI Service</label>
+                    <source_model>Orangecat\MagoAiImage\Model\Config\Source\ImageAiService</source_model>
+                    <comment>A Google Gemini or OpenAI service from Stores &gt; Configuration &gt; Mage-OS &gt; AI Configuration. Its API key is used and its type picks the image provider. Its chat model is not used: set the image model in the provider's group below.</comment>
                 </field>
                 <field id="max_images" translate="label comment" type="text" sortOrder="30" showInDefault="1" showInWebsite="1">
                     <label>Maximum Images per Request</label>
@@ -44,28 +44,7 @@
             </group>
             <group id="gemini" translate="label comment" type="text" sortOrder="100" showInDefault="1" showInWebsite="1">
                 <label>Google Gemini (Nano Banana)</label>
-                <comment>Get an API key at Google AI Studio (aistudio.google.com).</comment>
-                <field id="credential_source" translate="label comment" type="select" sortOrder="10" showInDefault="1" showInWebsite="1">
-                    <label>Credentials</label>
-                    <source_model>Orangecat\MagoAiImage\Model\Config\Source\CredentialSource</source_model>
-                    <comment>Enter a key here, or reuse a Google Gemini service from Stores &gt; Configuration &gt; Mage-OS &gt; AI Configuration.</comment>
-                </field>
-                <field id="api_key" translate="label comment" type="obscure" sortOrder="20" showInDefault="1" showInWebsite="1">
-                    <label>API Key</label>
-                    <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
-                    <comment>Stored encrypted.</comment>
-                    <depends>
-                        <field id="credential_source">own</field>
-                    </depends>
-                </field>
-                <field id="ai_service" translate="label comment" type="select" sortOrder="30" showInDefault="1" showInWebsite="1">
-                    <label>AI Service</label>
-                    <source_model>Orangecat\MagoAiImage\Model\Config\Source\GoogleAiBaseService</source_model>
-                    <comment>Only Google Gemini services are listed. Its key is used; its chat model is ignored.</comment>
-                    <depends>
-                        <field id="credential_source">ai_base</field>
-                    </depends>
-                </field>
+                <comment>Used when the AI Service above is a Google Gemini service.</comment>
                 <field id="model" translate="label comment" type="text" sortOrder="40" showInDefault="1" showInWebsite="1">
                     <label>Model</label>
                     <validate>required-entry</validate>
@@ -79,28 +58,7 @@
             </group>
             <group id="openai" translate="label comment" type="text" sortOrder="110" showInDefault="1" showInWebsite="1">
                 <label>OpenAI (GPT Image)</label>
-                <comment>Get an API key at platform.openai.com. GPT Image models may require API Organization Verification in the OpenAI console.</comment>
-                <field id="credential_source" translate="label comment" type="select" sortOrder="10" showInDefault="1" showInWebsite="1">
-                    <label>Credentials</label>
-                    <source_model>Orangecat\MagoAiImage\Model\Config\Source\CredentialSource</source_model>
-                    <comment>Enter a key here, or reuse an OpenAI service from Stores &gt; Configuration &gt; Mage-OS &gt; AI Configuration.</comment>
-                </field>
-                <field id="api_key" translate="label comment" type="obscure" sortOrder="20" showInDefault="1" showInWebsite="1">
-                    <label>API Key</label>
-                    <backend_model>Magento\Config\Model\Config\Backend\Encrypted</backend_model>
-                    <comment>Stored encrypted.</comment>
-                    <depends>
-                        <field id="credential_source">own</field>
-                    </depends>
-                </field>
-                <field id="ai_service" translate="label comment" type="select" sortOrder="30" showInDefault="1" showInWebsite="1">
-                    <label>AI Service</label>
-                    <source_model>Orangecat\MagoAiImage\Model\Config\Source\OpenAiAiBaseService</source_model>
-                    <comment>Only OpenAI services are listed ("OpenAI compatible" ones have no image API). Its key is used; its chat model is ignored.</comment>
-                    <depends>
-                        <field id="credential_source">ai_base</field>
-                    </depends>
-                </field>
+                <comment>Used when the AI Service above is an OpenAI service. GPT Image models may require API Organization Verification in the OpenAI console.</comment>
                 <field id="model" translate="label comment" type="text" sortOrder="40" showInDefault="1" showInWebsite="1">
                     <label>Model</label>
                     <validate>required-entry</validate>

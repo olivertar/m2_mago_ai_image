@@ -5,20 +5,18 @@
         <mago_ai_image>
             <general>
                 <enabled>0</enabled>
-                <provider/>
+                <ai_service/>
                 <max_images>4</max_images>
                 <timeout>90</timeout>
                 <max_reference_mb>10</max_reference_mb>
                 <preview_retention_days>7</preview_retention_days>
             </general>
             <gemini>
-                <credential_source>own</credential_source>
                 <model>gemini-nano-banana-2.1</model>
                 <image_size/>
                 <base_url>https://generativelanguage.googleapis.com</base_url>
             </gemini>
             <openai>
-                <credential_source>own</credential_source>
                 <model>gpt-image-2.5-sunburst</model>
                 <quality/>
             </openai>
