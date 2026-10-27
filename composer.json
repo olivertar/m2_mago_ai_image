@@ -6,20 +6,9 @@
     "require": {
         "php": "~8.2.0||~8.3.0||~8.4.0||~8.5.0",
         "ext-gd": "*",
-        "mage-os/framework": "*",
-        "mage-os/module-authorization": "*",
-        "mage-os/module-backend": "*",
-        "mage-os/module-catalog": "*",
-        "mage-os/module-config": "*",
-        "mage-os/module-media-storage": "*",
-        "mage-os/module-store": "*",
-        "mage-os/module-user": "*",
-        "mage-os/module-ai-base": "*",
+        "magento/module-media-storage": "*",
         "mago-assistant/magento2-mago": "^1.1",
-        "symfony/ai-gemini-platform": "^0.14",
-        "symfony/ai-open-ai-platform": "^0.14",
-        "symfony/ai-platform": "^0.14",
-        "symfony/http-client": "^7.3||^8.0"
+        "symfony/ai-gemini-platform": "^0.14"
     },
     "autoload": {
         "files": [
